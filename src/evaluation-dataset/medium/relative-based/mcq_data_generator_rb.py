@@ -14,10 +14,11 @@ random.seed(42)
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-dir", type=str, required=True)
 # parser.add_argument("--out-dir", type=str, required=True)
+parser.add_argument("--start-year", type=int, default=1947)
 parser.add_argument("--end-year", type=int, default=2022)
-parser.add_argument("--k", type=int, default=5)
+parser.add_argument("--k", type=int, default=5, help="Number of years to look ahead (Window size)")
 parser.add_argument("--suffix", type=str, default="")
-parser.add_argument("--number-of-samples-per-instance", type=int, default=2)
+parser.add_argument("--number-of-samples-per-instance", type=int, default=10 , help="Number of samples to be generated per instance aka p")
 
 
 args = parser.parse_args()
@@ -31,6 +32,7 @@ K = args.k
 BASE_DIR = args.base_dir.rstrip("/")
 OUT_DIR = BASE_DIR + "_med_relative_based_mcq_prompt"
 END_YEAR = args.end_year
+START_YEAR = args.start_year
 
 
 def get_correct_answer(idx, answers, K):
@@ -50,6 +52,7 @@ sample_counter = 0
 dirs = os.listdir(f"{BASE_DIR}")
 unique_set = set()
 test = 0
+per_category_counter = {}
 for i in tqdm(dirs):
     os.makedirs(f"{OUT_DIR}/{i}/", exist_ok=True)
 
@@ -70,10 +73,12 @@ for i in tqdm(dirs):
                         "answer": ""
                     }
 
-                    if obj["answer"][idx]["date"] != "nan" and obj["answer"][idx]["answer"] != "0": # and int(obj["answer"][idx]["date"]) < END_YEAR :
+                    if obj["answer"][idx]["date"] != "nan" and obj["answer"][idx]["answer"] != "0" and int(obj["answer"][idx]["date"]) < END_YEAR :
                         q = item['query'].replace("?", "")
                         next_year = int(obj['answer'][idx]['date']) + K
-                        item["query"] = f"In {obj['answer'][idx]['date']}, {q}, higher than {next_year}? Yes or No" + args.suffix
+                        if next_year > END_YEAR or int(obj["answer"][idx]["date"]) < START_YEAR:
+                            continue
+                        item["query"] = f"In {obj['answer'][idx]['date']}, {q} higher than {next_year}? Answer as Yes or No" + args.suffix
                         for c in c_code:
                             if c in obj["query"]:
                                 item["query"] = item["query"].replace(c, c_code_to_name[c])
@@ -105,6 +110,8 @@ for i in tqdm(dirs):
             data = pd.DataFrame(objs)
             data = data.loc[:,['id','query','answer']]
             sample_counter += data.shape[0]
+            per_category_counter[i] = per_category_counter.get(i, 0) + data.shape[0]
             data.to_csv(f"{OUT_DIR}/{i}/{json.split('/')[-1].split('.')[0]}.csv", index=False)
 
 print(f"Total samples: {sample_counter}")
+pprint(per_category_counter)

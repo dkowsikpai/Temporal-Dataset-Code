@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-dir", type=str, required=True)
+parser.add_argument("--start-year", type=int, default=1947)
+parser.add_argument("--end-year", type=int, default=2022)
+
 # parser.add_argument("--out-dir", type=str, required=True)
 
 args = parser.parse_args()
@@ -36,6 +39,15 @@ for i in tqdm(dirs):
                     "answer": []
                 }
 
+                temp_ans = []
+                for idx in range(len(obj["answer"])):
+                    if args.start_year <= int(obj["answer"][idx]["date"]) <= args.end_year:
+                        temp_ans.append(obj["answer"][idx])
+
+                if len(temp_ans) == 0:
+                    continue
+
+                obj["answer"] = temp_ans
                 prev = obj["answer"][0]["answer"]
                 item["answer"].append(obj["answer"][0])
                 for idx in range(1, len(obj["answer"])):

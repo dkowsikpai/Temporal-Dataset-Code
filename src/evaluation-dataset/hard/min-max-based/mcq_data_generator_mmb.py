@@ -14,9 +14,10 @@ random.seed(42)
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-dir", type=str, required=True)
 # parser.add_argument("--out-dir", type=str, required=True)
+parser.add_argument("--start-year", type=int, default=1947)
 parser.add_argument("--end-year", type=int, default=2022)
 parser.add_argument("--k", type=int, default=5)
-parser.add_argument("--number-of-samples-per-instance", type=int, default=2)
+parser.add_argument("--number-of-samples-per-instance", type=int, default=10 , help="Number of samples to be generated per instance aka p")
 
 
 args = parser.parse_args()
@@ -29,6 +30,7 @@ K = args.k
 BASE_DIR = args.base_dir
 OUT_DIR = BASE_DIR + "_hard_min_max_based_mcq_prompt"
 END_YEAR = args.end_year
+START_YEAR = args.start_year
 
 # os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -81,6 +83,7 @@ def get_options(idx, mn, mx):
 sample_counter = 0
 dirs = os.listdir(BASE_DIR)
 unique_set = set()
+per_category_count = {}
 for dir in tqdm(dirs):
     os.makedirs(f"{OUT_DIR}/{dir}", exist_ok=True)
 
@@ -102,13 +105,16 @@ for dir in tqdm(dirs):
                     last_year = int(obj["answer"][idx]["date"])
                     answers = obj["answer"][idx-K:idx]
 
-                    if last_year > END_YEAR or last_year < first_year:
+                    # if last_year < first_year:
+                    #     continue
+
+                    if last_year > END_YEAR or last_year < first_year or first_year < START_YEAR:
                         continue
 
                     if "[start date]" in item["query"]:
                         item["query"] = item["query"].replace("[start date]", first_year).replace("[end date]", last_year)
                     else:
-                        item["query"] = f"In range {first_year}-{last_year}, {item['query']}. What is the minimum and maximum value out of the options?"
+                        item["query"] = f"In range {first_year}-{last_year}, {item['query']}? What is the minimum and maximum value out of the options?"
 
                     # item["query"] = "What is the correct option for the following query? " + item["query"]
 
@@ -138,7 +144,7 @@ for dir in tqdm(dirs):
                     # pprint(correct_option)
                     # exit()
 
-                    item["query"] += f""". Options: {options}"""
+                    item["query"] += f""": Options: {options}"""
                     item["answer"] = correct_option
 
                     # if item["answer"].count("In ") == 1:
@@ -151,13 +157,15 @@ for dir in tqdm(dirs):
                 elif len(per_sample_answers) > args.number_of_samples_per_instance:
                     per_sample_answers = random.sample(per_sample_answers, args.number_of_samples_per_instance)
                 objs.extend(per_sample_answers)
-                sample_counter += 1
+                sample_counter += len(per_sample_answers)
                     
             if len(objs) == 0:
                 continue
 
             data = pd.DataFrame(objs)
             data = data.loc[:,['id','query','answer']]
+            per_category_count[dir] = per_category_count.get(dir, 0) + data.shape[0]
             data.to_csv(f"{OUT_DIR}/{dir}/{json.split('/')[-1].split('.')[0]}.csv", index=False)
 
 print(f"Total samples: {sample_counter}")
+pprint(per_category_count)

@@ -34,7 +34,11 @@ for y in tqdm(range(START_YEAR, END_YEAR + 1)):
         if file.endswith(".csv"):
             df = pd.read_csv(file)
             df["year"] = df["id"].str.split("-").str[-1]
-            df = df[df["year"] == str(y)]
+            df['year'] = df['year'].astype(int)
+            # if y == START_YEAR:
+            #     df = df[(df["year"] <= y)]
+            # else:
+            df = df[df["year"] == y]
             yearly_data += df.to_dict(orient="records")
             # print(len(yearly_data))
 

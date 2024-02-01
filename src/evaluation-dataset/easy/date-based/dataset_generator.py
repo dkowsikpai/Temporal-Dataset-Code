@@ -5,10 +5,12 @@ import jsonlines
 import argparse
 from tqdm import tqdm
 import pandas as pd
+from rich.pretty import pprint
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-dir", type=str, required=True)
 # parser.add_argument("--out-dir", type=str, required=True)
+parser.add_argument("--start-year", type=int, default=1947)
 parser.add_argument("--end-year", type=int, default=2022)
 parser.add_argument("--suffix", type=str, default="")
 
@@ -22,10 +24,13 @@ args = parser.parse_args()
 BASE_DIR = args.base_dir.rstrip("/")
 OUT_DIR = BASE_DIR + "_acc_prompt"
 END_YEAR = args.end_year
+START_YEAR = args.start_year
 
 sample_counter = 0
 dirs = os.listdir(f"{BASE_DIR}")
 unique_set = set()
+dirs = dirs[::-1]
+per_category_count = {}
 for i in tqdm(dirs):
     os.makedirs(f"{OUT_DIR}/{i}/", exist_ok=True)
 
@@ -33,7 +38,7 @@ for i in tqdm(dirs):
     jsons = [f"{BASE_DIR}/{i}/{json}" for json in jsons if json.endswith(".json")]
 
 
-    for json in tqdm(jsons, leave=False):
+    for json in tqdm(jsons, leave=False, desc=f"Processing {i}"):
         with jsonlines.open(json) as reader:
             objs = []
             for obj in reader:
@@ -44,8 +49,12 @@ for i in tqdm(dirs):
                         "id": str(obj["id"]) + "-" + str(idx),
                         "answer": ""
                     }
+                    # if 'answer' not in obj["answer"][idx]:
+                    #     print(json)
+                    #     exit()
+                    #     continue
 
-                    if obj["answer"][idx]["date"] != "nan" and obj["answer"][idx]["answer"] != "0": # and int(obj["answer"][idx]["date"]) < END_YEAR :
+                    if obj["answer"][idx]["date"] != "nan" and obj["answer"][idx]["answer"] != "0" and START_YEAR <= int(obj["answer"][idx]["date"]) <= END_YEAR: # 
                         q = item['query'].replace("?", "")
                         item["query"] = f"In {obj['answer'][idx]['date']}, {q}" + args.suffix
                         for c in c_code:
@@ -67,6 +76,10 @@ for i in tqdm(dirs):
             data = pd.DataFrame(objs)
             data = data.loc[:,['id','query','answer']]
             sample_counter += data.shape[0]
+            per_category_count[i] = per_category_count.get(i, 0) + data.shape[0]
             data.to_csv(f"{OUT_DIR}/{i}/{json.split('/')[-1].split('.')[0]}.csv", index=False)
+            # print(sample_counter)
+           
 
 print(f"Total samples: {sample_counter}")
+pprint(per_category_count)
