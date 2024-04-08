@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--base-dir", type=str, required=True, help="Model Eval Path")
+parser.add_argument("--base-dir", type=str, required=True, help="Model Eval Path (all)")
 # parser.add_argument("--start-year", type=int, default=1947)
 # parser.add_argument("--end-year", type=int, default=2022)
 
@@ -36,7 +36,11 @@ for cate in tqdm(eval_category):
         csvs = [f"{i}/{csv}" for csv in csvs if csv.endswith(".csv")]
         per_dir_count = {}
         for csv in csvs:
+            # print(csv)
             df = pd.read_csv(csv)
+            if "generated_text" in df.columns:
+                # Drop the generated_text column
+                df.drop(columns=["generated_text"], inplace=True)
             last_col = df.columns[-1]
 
             true_values = df[df['answer'] == df[last_col]].shape[0]
@@ -48,6 +52,7 @@ for cate in tqdm(eval_category):
             per_dir_count["empty"] = per_dir_count.get("empty", 0) + empty_values
         
         per_dir_count["dir"] = i.split("/")[-1]
+        # print(i, per_dir_count)
         total = per_dir_count["true"] + per_dir_count["false"] + per_dir_count["empty"]
         
         per_dir_count["true_percent"] = round(per_dir_count["true"] / total, 2) * 100

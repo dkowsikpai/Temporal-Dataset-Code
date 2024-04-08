@@ -24,6 +24,8 @@ dirs = os.listdir(BASE_DIR)
 dirs.sort()
 files = []
 for i in dirs:
+    if not os.path.isdir(f"{BASE_DIR}/{i}"):
+        continue
     temp = os.listdir(f"{BASE_DIR}/{i}")
     temp.sort()
     file_path = [f"{BASE_DIR}/{i}/{j}" for j in temp]
@@ -49,7 +51,11 @@ for y in tqdm(range(START_YEAR, END_YEAR + 1)):
         continue
 
     data = pd.DataFrame(yearly_data)
-    data = data.loc[:,['id','query','answer']]
+    cols = ['id','query','answer']
+    for i in df.columns:
+        if i not in cols:
+            cols.append(i)
+    data = data.loc[:, cols]
     if args.random_samples > 0:
         data = data.sample(args.random_samples, random_state=1)
     yearly_freq[y] = data.shape[0]
